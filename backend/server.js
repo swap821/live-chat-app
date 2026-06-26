@@ -1,84 +1,146 @@
-const express = require('express');
-const http = require('http');
-const { Server } = require('socket.io');
-const cors = require('cors');
-const mongoose = require('mongoose');
-const Message = require('./models/Message'); // Import our new model
+import 'dotenv/config';
+import express from 'express';
+import http from 'http';
+import { Server } from 'socket.io';
+import mongoose from 'mongoose';
+import { connectDatabase, disconnectDatabase } from './src/config/database.js';
+import {
+  corsMiddleware,
+  helmetMiddleware,
+  rateLimitMiddleware,
+  mongoSanitizeMiddleware,
+} from './src/middleware/security.js';
+import { globalErrorHandler, notFoundHandler } from './src/middleware/errorHandler.js';
+import { registerChatSocket, getTotalOnlineCount } from './src/sockets/chatSocket.js';
+import logger from './src/utils/logger.js';
 
+// Validate required environment variables
+const REQUIRED_ENV_VARS = ['MONGO_URI', 'FRONTEND_URL'];
+const missingVars = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+if (missingVars.length > 0) {
+  logger.error(`FATAL: Missing required environment variables: ${missingVars.join(', ')}`);
+  process.exit(1);
+}
+
+// Express App Setup
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 3001;
 
+// Security middleware
+app.use(helmetMiddleware);
+app.use(corsMiddleware);
+app.use(mongoSanitizeMiddleware);
+app.use(rateLimitMiddleware);
+
+// Body parsing
+app.use(express.json({ limit: '10kb' }));
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+
+// HTTP + Socket.IO Server
 const server = http.createServer(app);
 
-// Inside server.js, update the io setup:
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-
+const FRONTEND_URL = process.env.FRONTEND_URL;
 const io = new Server(server, {
   cors: {
-    origin: FRONTEND_URL, 
-    methods: ["GET", "POST"]
+    origin: FRONTEND_URL.split(',').map((s) => s.trim()),
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+  connectTimeout: 45000,
+  pingTimeout: 30000,
+  pingInterval: 25000,
+});
+
+// Register socket event handlers
+registerChatSocket(io);
+
+// HTTP Routes
+
+/**
+ * Health check endpoint.
+ */
+app.get('/health', (_req, res) => {
+  const dbState = ['connecting', 'connected', 'disconnecting', 'disconnected'][
+    mongoose.connection.readyState || 0
+  ];
+  res.status(200).json({
+    status: 'ok',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    database: dbState,
+    onlineUsers: getTotalOnlineCount(),
+  });
+});
+
+/**
+ * API root.
+ */
+app.get('/', (_req, res) => {
+  res.status(200).json({
+    name: 'Live Chat API',
+    version: '2.0.0',
+    status: 'running',
+    docs: '/health',
+  });
+});
+
+// Error Handling
+app.use(notFoundHandler);
+app.use(globalErrorHandler);
+
+// Database Connection & Server Start
+const startServer = async () => {
+  try {
+    await connectDatabase();
+
+    server.listen(PORT, () => {
+      logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+      logger.info(`Accepting CORS from: ${FRONTEND_URL}`);
+    });
+  } catch (err) {
+    logger.error(`Failed to start server: ${err.message}`);
+    process.exit(1);
   }
-});
+};
 
-// --- MongoDB Connection ---
-// Replace this URI with your MongoDB Atlas connection string if you are using the cloud!
-// For local MongoDB, this standard URI works perfectly.
-const MONGO_URI = "mongodb+srv://kumarswapnil82_db_user:RfSvSjBJZ9oAj8pv@cluster1.kvyaq5w.mongodb.net/?appName=Cluster1"; 
+// Graceful Shutdown
+const shutdown = async (signal) => {
+  logger.info(`${signal} received. Starting graceful shutdown...`);
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log('📦 Connected to MongoDB'))
-  .catch(err => console.error('MongoDB connection error:', err));
-
-// --- Socket.io Logic ---
-io.on('connection', (socket) => {
-  console.log(`🟢 User Connected: ${socket.id}`);
-
-  // 1. Listen for a user joining a specific room
-  socket.on("join_room", async (room) => {
-    socket.join(room);
-    console.log(`User ID: ${socket.id} joined room: ${room}`);
-
-    // Fetch previous messages ONLY for this specific room
+  server.close(async () => {
+    logger.info('HTTP server closed');
     try {
-      const roomMessages = await Message.find({ room: room }).sort({ createdAt: 1 }).limit(50);
-      socket.emit('load_messages', roomMessages);
-    } catch (error) {
-      console.error("Error loading room messages:", error);
+      await io.close();
+      logger.info('Socket.IO server closed');
+      await disconnectDatabase();
+      logger.info('Graceful shutdown complete');
+      process.exit(0);
+    } catch (err) {
+      logger.error(`Shutdown error: ${err.message}`);
+      process.exit(1);
     }
   });
 
-  // 2. Handle sending messages to a specific room
-  socket.on('send_message', async (data) => {
-    try {
-      // Save to MongoDB with the room ID attached
-      const newMessage = new Message({
-        room: data.room,
-        author: data.author,
-        message: data.message,
-        time: data.time
-      });
-      const savedMessage = await newMessage.save();
+  setTimeout(() => {
+    logger.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+};
 
-      // Emit ONLY to users in that specific room using .to()
-      socket.to(data.room).emit('receive_message', {
-        id: savedMessage._id,
-        room: savedMessage.room,
-        author: savedMessage.author,
-        message: savedMessage.message,
-        time: savedMessage.time
-      });
-    } catch (error) {
-      console.error("Error saving message:", error);
-    }
-  });
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
-  socket.on('disconnect', () => {
-    console.log(`🔴 User Disconnected: ${socket.id}`);
-  });
+process.on('uncaughtException', (err) => {
+  logger.error(`Uncaught Exception: ${err.message}`);
+  logger.error(err.stack);
+  shutdown('UNCAUGHT_EXCEPTION');
 });
 
-const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error(`Unhandled Rejection at: ${promise}, reason: ${reason}`);
+  shutdown('UNHANDLED_REJECTION');
 });
+
+// Start
+startServer();

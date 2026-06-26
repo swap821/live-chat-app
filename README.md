@@ -1,247 +1,333 @@
-# 💬 Live Chat App : https://live-chat-app-five-amber.vercel.app/
+# Live Chat App
 
-![React](https://img.shields.io/badge/react-%2320232a.svg?style=for-the-badge&logo=react&logoColor=%2361DAFB)
-![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
-![NodeJS](https://img.shields.io/badge/node.js-6DA55F?style=for-the-badge&logo=node.js&logoColor=white)
-![Express.js](https://img.shields.io/badge/express.js-%23404d59.svg?style=for-the-badge&logo=express&logoColor=%2361DAFB)
-![MongoDB](https://img.shields.io/badge/MongoDB-%234ea94b.svg?style=for-the-badge&logo=mongodb&logoColor=white)
-![Socket.io](https://img.shields.io/badge/socket.io-010101?style=for-the-badge&logo=socket.io&logoColor=white)
-![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+A modern, secure, full-stack real-time chat application built with the MERN stack and Socket.io. Features typing indicators, online user presence, message reactions, emoji picker, dark mode, and a responsive UI — all with production-grade security.
 
-A modern, full-stack real-time chat application built using the MERN stack and Socket.io. The platform enables users to communicate instantly through private chat rooms with persistent message storage and a responsive modern interface.
-
-This project demonstrates real-time communication systems, WebSocket implementation, scalable frontend architecture, backend API integration, and database persistence using MongoDB.
+> **Live Demo:** https://live-chat-app-five-amber.vercel.app/
 
 ---
 
-# ✨ Key Features
+## Features
 
-## ⚡ Real-Time Messaging
-- Instant bi-directional communication using WebSockets
-- Real-time message broadcasting with Socket.io
-- Low-latency chat experience
+### Real-Time Messaging
+- Instant bi-directional communication via WebSockets (Socket.io)
+- Persistent message storage in MongoDB
+- Message reactions (emoji) with toggle support
+- Chat history automatically loaded when joining a room
 
-## 🔒 Private Chat Rooms
-- Users can join custom room IDs
-- Conversations remain isolated and private
-- Multiple rooms supported simultaneously
+### Typing Indicators
+- "X is typing..." with animated bouncing dots
+- Smart multi-user display ("Alice and Bob are typing", "Alice and 2 others are typing")
+- 2-second debounce with automatic timeout
 
-## 👤 Custom Usernames
-- Temporary usernames for room-based chatting
-- Personalized chat identity without account creation
+### Online User Presence
+- Real-time list of users in each room
+- Colored avatar circles with user initials
+- Stacked avatar preview in the chat header
+- Join/leave notifications
 
-## 💾 Persistent Chat History
-- Messages stored securely in MongoDB
-- Previous chats automatically loaded when users rejoin rooms
-- Database persistence using Mongoose ODM
+### Emoji Picker
+- 28 commonly used emojis
+- Click to insert into message input
+- Click-outside to close
 
-## 🎨 Modern Responsive UI
-- Clean and minimal chat interface
-- Fully responsive across desktop and mobile devices
-- Built rapidly using Tailwind CSS
+### Dark Mode
+- Toggle between light and dark themes
+- Persists preference to localStorage
+- Respects system `prefers-color-scheme` on first visit
+- Full Tailwind `dark:` support across all components
 
-## 🚨 Error Handling & Stability
-- Robust socket connection handling
-- Backend validation and error management
-- Smooth user experience during reconnections
+### Responsive Design
+- Mobile-first layout with adaptive heights
+- Mobile back button to leave room
+- Touch-friendly buttons and inputs
+- Works on desktop, tablet, and phone
+
+### Browser Notifications
+- Desktop notification on new messages (when tab is hidden)
+- Respects Notification API permission
+
+### Connection Resilience
+- Connection status indicator (green/red dot)
+- Automatic reconnection with 5 retry attempts
+- Exponential backoff (1s - 5s)
+- Warning banner when server is unreachable
 
 ---
 
-# 🛠️ Tech Stack
+## Tech Stack
 
-## Frontend
-- React.js
-- Vite
-- Tailwind CSS
+### Frontend
+- React 19 + Vite
+- Tailwind CSS v3
 - Socket.io-client
+- React Context + Custom Hooks
 
-## Backend
-- Node.js
-- Express.js
+### Backend
+- Node.js + Express
 - Socket.io
+- MongoDB Atlas + Mongoose
+- Helmet (security headers)
+- express-rate-limit
+- express-mongo-sanitize
 
-## Database
-- MongoDB Atlas
-- Mongoose ODM
+### DevOps
+- Frontend: Vercel
+- Backend: Render / Railway
+- Database: MongoDB Atlas
 
 ---
 
-# 📂 Project Structure
+## Project Structure
 
-```plaintext
+```
 live-chat-app/
-│
+|
 ├── backend/
-│   ├── models/
-│   ├── routes/
-│   ├── sockets/
-│   ├── server.js
-│   └── package.json
-│
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── database.js          # MongoDB connection
+│   │   ├── middleware/
+│   │   │   ├── security.js          # Helmet, CORS, rate limiting, mongo-sanitize
+│   │   │   ├── validation.js        # Input validators for all socket events
+│   │   │   └── errorHandler.js      # Global error handling
+│   │   ├── models/
+│   │   │   └── Message.js           # Mongoose schema with reactions
+│   │   ├── sockets/
+│   │   │   └── chatSocket.js        # All socket event handlers
+│   │   └── utils/
+│   │       └── logger.js            # Structured console logger
+│   ├── .env.example                  # Environment variable template
+│   ├── package.json
+│   └── server.js                     # Entry point
+|
 ├── frontend/
 │   ├── src/
+│   │   ├── contexts/
+│   │   │   └── SocketContext.jsx    # Socket lifecycle management
+│   │   ├── hooks/
+│   │   │   ├── useChat.js           # Message state & send logic
+│   │   │   ├── useTyping.js         # Typing indicator debounce
+│   │   │   ├── useOnlineUsers.js    # Online user tracking
+│   │   │   └── useNotifications.js  # Browser notification API
 │   │   ├── components/
-│   │   ├── pages/
+│   │   │   ├── ChatRoom.jsx         # Main chat container
+│   │   │   ├── JoinForm.jsx         # Room join form with validation
+│   │   │   ├── MessageList.jsx      # Scrollable message list
+│   │   │   ├── MessageBubble.jsx    # Individual message bubble
+│   │   │   ├── ChatInput.jsx        # Message input with emoji
+│   │   │   ├── TypingIndicator.jsx  # "X is typing" animation
+│   │   │   ├── OnlineUsers.jsx      # Online users dropdown
+│   │   │   ├── EmojiPicker.jsx      # Emoji selection grid
+│   │   │   └── DarkModeToggle.jsx   # Light/dark mode toggle
 │   │   ├── App.jsx
-│   │   └── main.jsx
+│   │   ├── main.jsx
+│   │   └── index.css
 │   └── package.json
-│
+|
 └── README.md
 ```
 
 ---
 
-# 🚀 Getting Started
+## Getting Started
 
-Follow these instructions to run the project locally on your machine.
+### Prerequisites
+- Node.js 18+
+- npm or yarn
+- MongoDB Atlas account (or local MongoDB)
 
----
-
-# 📌 Prerequisites
-
-Make sure you have installed:
-- Node.js
-- npm
-- MongoDB Atlas account or local MongoDB setup
-
-Download Node.js:
-https://nodejs.org/
-
----
-
-# ⚙️ Installation & Setup
-
-## 1️⃣ Clone the Repository
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/swap821/live-chat-app.git
 cd live-chat-app
 ```
 
----
-
-# 🔧 Backend Setup
-
-Open a terminal and navigate to the backend folder:
+### 2. Backend Setup
 
 ```bash
 cd backend
 npm install
 ```
 
----
-
-## 🌐 Configure Environment Variables
-
-Create a `.env` file inside the backend folder:
+Create a `.env` file (copy from `.env.example`):
 
 ```env
-PORT=5000
-MONGO_URI=your_mongodb_connection_string
+NODE_ENV=development
+PORT=3001
+MONGO_URI=mongodb+srv://<username>:<password>@<cluster>.mongodb.net/<dbname>?retryWrites=true&w=majority
+FRONTEND_URL=http://localhost:5173
 ```
 
----
+> **Security note:** Never commit your `.env` file. The `.env.example` shows the required variables without real values.
 
-## ▶️ Start Backend Server
+Start the backend:
 
 ```bash
 npm run dev
 ```
 
----
-
-# 🎨 Frontend Setup
-
-Open a second terminal:
+### 3. Frontend Setup
 
 ```bash
 cd frontend
 npm install
+```
+
+Create a `.env.local` file:
+
+```env
+VITE_BACKEND_URL=http://localhost:3001
+```
+
+Start the frontend:
+
+```bash
 npm run dev
 ```
 
----
+### 4. Open the App
 
-# 🌍 Run the Application
-
-Visit:
-
-```bash
-http://localhost:5173
-```
-
-Open multiple browser tabs/windows to test the real-time chat functionality.
+Visit `http://localhost:5173` and open multiple browser tabs to test real-time chat.
 
 ---
 
-# 🌐 Deployment
+## Environment Variables
 
-This project is deployment-ready and can be hosted using:
+### Backend (.env)
 
-## Frontend Hosting
-- Vercel
-- Netlify
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `MONGO_URI` | Yes | MongoDB connection string |
+| `FRONTEND_URL` | Yes | Allowed CORS origin(s). Comma-separated for multiple |
+| `PORT` | No | Server port (default: 3001) |
+| `NODE_ENV` | No | `development` or `production` |
+| `RATE_LIMIT_WINDOW_MS` | No | Rate limit window in ms (default: 900000 = 15 min) |
+| `RATE_LIMIT_MAX_REQUESTS` | No | Max requests per window (default: 100) |
 
-## Backend Hosting
-- Render
-- Railway
+### Frontend (.env.local)
 
-## Database
-- MongoDB Atlas
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_BACKEND_URL` | No | Backend URL (default: http://localhost:3001) |
 
 ---
 
-# 🧠 Concepts & Skills Demonstrated
+## Deployment
 
-This project demonstrates practical understanding of:
+### Frontend (Vercel)
+1. Push code to GitHub
+2. Import project on [Vercel](https://vercel.com)
+3. Set root directory to `frontend`
+4. Add `VITE_BACKEND_URL` environment variable
+5. Deploy
 
-- Real-Time WebSocket Communication
+### Backend (Render)
+1. Push code to GitHub
+2. Create Web Service on [Render](https://render.com)
+3. Set root directory to `backend`
+4. Add all environment variables from `.env.example`
+5. Deploy
+
+### Backend (Railway)
+1. Push code to GitHub
+2. Create project on [Railway](https://railway.app)
+3. Deploy from GitHub repo
+4. Add environment variables
+5. Deploy
+
+---
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/` | API info (name, version, status) |
+| `GET` | `/health` | Health check with DB status & online user count |
+
+## Socket Events
+
+### Client -> Server
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `join_room` | `{ room, username }` | Join a chat room |
+| `leave_room` | `room` | Leave current room |
+| `send_message` | `{ room, author, message, time }` | Send a message |
+| `typing` | `{ room, author }` | Start typing indicator |
+| `stop_typing` | `{ room, author }` | Stop typing indicator |
+| `add_reaction` | `{ room, messageId, emoji, author }` | Toggle reaction on message |
+
+### Server -> Client
+
+| Event | Payload | Description |
+|-------|---------|-------------|
+| `load_messages` | Array of messages | Previous messages on room join |
+| `receive_message` | Message object | New message broadcast |
+| `user_typing` | `{ author }` | Someone started typing |
+| `user_stopped_typing` | `{ author }` | Someone stopped typing |
+| `user_joined` | `{ username, usersOnline, usersList }` | User joined room |
+| `user_left` | `{ username, usersOnline, usersList }` | User left room |
+| `reaction_updated` | `{ messageId, reactions }` | Reaction changed on message |
+| `error_event` | `{ code, message }` | Error notification |
+
+---
+
+## Security Features
+
+- **Helmet** - Security headers (CSP, HSTS, X-Frame-Options, etc.)
+- **Rate Limiting** - 100 requests per 15 minutes per IP
+- **MongoDB Sanitization** - Prevents NoSQL injection by stripping `$` and `.`
+- **Strict CORS** - Whitelist-based origin validation
+- **Input Validation** - All socket payloads validated (max lengths, required fields, sanitization)
+- **Global Error Handler** - Safe error responses, no stack trace leakage in production
+- **Graceful Shutdown** - Proper cleanup on SIGTERM/SIGINT
+- **Environment Variables** - No secrets in source code
+
+---
+
+## Concepts & Skills Demonstrated
+
+- Real-time WebSocket Communication (Socket.io)
 - MERN Stack Development
-- Socket.io Event Handling
-- REST API Integration
-- MongoDB Database Persistence
-- React Component Architecture
-- Responsive UI Design
-- Asynchronous JavaScript
-- Backend Scalability
-- Full-Stack Deployment
+- React 19 + Custom Hooks + Context API
+- Component-based architecture
+- Security hardening (helmet, rate limiting, input validation)
+- MongoDB Database Persistence with Mongoose
+- Responsive UI Design (Tailwind CSS)
+- Dark mode implementation
+- Browser Notification API
+- Graceful error handling and reconnection
+- Full-stack deployment
 
 ---
 
-# 🚀 Future Improvements
+## Changelog
 
-- User Authentication System
-- Online/Offline User Status
-- Typing Indicators
-- File & Image Sharing
-- Emoji Reactions
-- Voice & Video Calling
-- Message Notifications
-- End-to-End Encryption
+### v2.0.0 (2026)
+- **Security:** Added helmet, rate limiting, mongo-sanitize, input validation, strict CORS
+- **Architecture:** Refactored from monolith to modular structure (backend + frontend)
+- **Features:** Typing indicators, online user presence, emoji picker, dark mode, browser notifications
+- **UX:** Responsive design, connection status, loading states, form validation
+- **Dev:** Switched to ES modules, added structured logging, health check endpoint
+
+### v1.0.0
+- Initial release with basic real-time chat
+- Room-based messaging
+- Persistent message history
+- Basic responsive UI
 
 ---
 
-# 👨‍💻 Author
+## Author
 
-## Swapnil Kumar
-
+**Swapnil Kumar**
 - GitHub: https://github.com/swap821
 - LinkedIn: https://www.linkedin.com/in/swapnil-kumar-73a68a308
+- Portfolio: https://swapnil-kumar-portfolio.vercel.app/
 
 ---
 
-# ⭐ Project Goal
-
-This project was built to strengthen and demonstrate:
-- Full-Stack MERN Development
-- Real-Time Communication Systems
-- WebSocket Implementation
-- Scalable Frontend & Backend Architecture
-- Database Management
-- Professional Software Engineering Practices
-
----
-
-# 📜 License
+## License
 
 This project is open-source and available for educational and learning purposes.

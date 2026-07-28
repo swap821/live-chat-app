@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { SocketProvider } from './contexts/SocketContext';
+import { SocketProvider, useSocket } from './contexts/SocketContext';
 import JoinForm from './components/JoinForm';
 import ChatRoom from './components/ChatRoom';
 import { useDarkMode } from './components/DarkModeToggle';

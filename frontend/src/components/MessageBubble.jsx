@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { motion } from 'framer-motion';
 
 function getInitials(name) {
   return name
@@ -32,7 +33,10 @@ export default function MessageBubble({
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9, y: 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 25 }}
       className={`flex gap-2 max-w-[85%] ${isMe ? 'flex-row-reverse self-end' : 'flex-row self-start'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -75,6 +79,6 @@ export default function MessageBubble({
           </span>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
